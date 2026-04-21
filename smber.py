@@ -398,6 +398,13 @@ def enumerate_host(args) -> list:
 # Reporting
 # ---------------------------------------------------------------------------
 def write_report(findings: list, outfile: str):
+    if outfile.endswith(".html"):
+        _write_html_report(findings, outfile)
+    else:
+        _write_text_report(findings, outfile)
+
+
+def _write_text_report(findings: list, outfile: str):
     with open(outfile, "w") as f:
         f.write(f"SMB Sensitive File Report — {datetime.now()}\n")
         f.write("=" * 70 + "\n\n")
@@ -412,6 +419,137 @@ def write_report(findings: list, outfile: str):
                 f.write(f"    Preview:\n{item['preview'][:500]}\n")
             f.write("\n")
     success(f"Report written to {outfile}")
+
+
+def _write_html_report(findings: list, outfile: str):
+    matched = [f for f in findings if f["patterns"]]
+    hosts   = sorted(set(f["host"] for f in findings))
+    shares  = sorted(set(f["share"] for f in findings))
+
+    def esc(s):
+        return str(s).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;")
+
+    rows = ""
+    for i, item in enumerate(findings, 1):
+        badge = ""
+        if item["patterns"]:
+            badge = f'''<span class="badge">MATCH</span>'''
+        matches_html = ""
+        if item["patterns"]:
+            matches_html = "<ul class=\"matches\">" + "".join(
+                f"<li><code>{esc(p)}</code></li>" for p in item["patterns"][:10]
+            ) + "</ul>"
+        preview_html = ""
+        if item["preview"]:
+            preview_html = f'''<pre class="preview">{esc(item["preview"][:1000])}</pre>'''
+        row_class = "match-row" if item["patterns"] else ""
+        rows += f"""
+        <tr class="{row_class}">
+            <td>{i}</td>
+            <td><code class="unc">{esc(item["unc"])}</code> {badge}</td>
+            <td>{esc(item["share"])}</td>
+            <td>{item["size"]:,}</td>
+            <td>{matches_html}{preview_html}</td>
+        </tr>"""
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMB Sensitive File Report</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ font-family: "Segoe UI", Arial, sans-serif; background: #0f1117; color: #e0e0e0; padding: 2rem; }}
+  h1 {{ color: #00d4aa; font-size: 1.6rem; margin-bottom: 0.3rem; }}
+  .subtitle {{ color: #888; font-size: 0.85rem; margin-bottom: 2rem; }}
+  .stats {{ display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }}
+  .stat {{ background: #1a1d2e; border: 1px solid #2a2d3e; border-radius: 8px; padding: 1rem 1.5rem; min-width: 140px; }}
+  .stat .val {{ font-size: 2rem; font-weight: bold; color: #00d4aa; }}
+  .stat .lbl {{ font-size: 0.8rem; color: #888; margin-top: 0.2rem; }}
+  .stat.warn .val {{ color: #ff6b6b; }}
+  .stat.info .val {{ color: #ffd93d; }}
+  table {{ width: 100%; border-collapse: collapse; background: #1a1d2e; border-radius: 8px; overflow: hidden; }}
+  th {{ background: #12151f; color: #00d4aa; padding: 0.75rem 1rem; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }}
+  td {{ padding: 0.75rem 1rem; border-bottom: 1px solid #2a2d3e; vertical-align: top; font-size: 0.85rem; }}
+  tr:last-child td {{ border-bottom: none; }}
+  tr.match-row {{ background: #1f1520; }}
+  tr:hover td {{ background: #22253a; }}
+  code.unc {{ color: #7ecfff; font-size: 0.8rem; word-break: break-all; }}
+  .badge {{ background: #ff6b6b; color: #fff; font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: bold; vertical-align: middle; margin-left: 0.4rem; }}
+  ul.matches {{ list-style: none; margin-top: 0.4rem; }}
+  ul.matches li {{ margin-bottom: 0.2rem; }}
+  ul.matches code {{ background: #2a1f1f; color: #ff9999; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.78rem; }}
+  pre.preview {{ background: #12151f; color: #aaa; padding: 0.75rem; border-radius: 4px; font-size: 0.75rem; margin-top: 0.5rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; border-left: 3px solid #00d4aa; }}
+  .filter-bar {{ margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }}
+  .filter-bar input {{ background: #1a1d2e; border: 1px solid #2a2d3e; color: #e0e0e0; padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 0.85rem; width: 280px; }}
+  .filter-bar input:focus {{ outline: none; border-color: #00d4aa; }}
+  .filter-btn {{ background: #1a1d2e; border: 1px solid #2a2d3e; color: #aaa; padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 0.8rem; cursor: pointer; }}
+  .filter-btn.active {{ border-color: #ff6b6b; color: #ff6b6b; }}
+  .no-results {{ text-align: center; padding: 2rem; color: #555; display: none; }}
+</style>
+</head>
+<body>
+<h1>🔍 SMB Sensitive File Report</h1>
+<p class="subtitle">Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} &nbsp;|&nbsp; Hosts: {esc(", ".join(hosts))} &nbsp;|&nbsp; Shares: {esc(", ".join(shares))}</p>
+
+<div class="stats">
+  <div class="stat"><div class="val">{len(findings)}</div><div class="lbl">Files Found</div></div>
+  <div class="stat warn"><div class="val">{len(matched)}</div><div class="lbl">Credential Matches</div></div>
+  <div class="stat info"><div class="val">{len(hosts)}</div><div class="lbl">Hosts</div></div>
+  <div class="stat info"><div class="val">{len(shares)}</div><div class="lbl">Shares</div></div>
+</div>
+
+<div class="filter-bar">
+  <input type="text" id="searchBox" placeholder="Filter by path, share, or match..." oninput="filterTable()">
+  <button class="filter-btn" id="matchOnly" onclick="toggleMatchOnly()">Matches Only</button>
+</div>
+
+<table id="resultsTable">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>File</th>
+      <th>Share</th>
+      <th>Size</th>
+      <th>Findings</th>
+    </tr>
+  </thead>
+  <tbody id="tableBody">
+    {rows}
+  </tbody>
+</table>
+<p class="no-results" id="noResults">No results match your filter.</p>
+
+<script>
+  let matchOnlyActive = false;
+
+  function filterTable() {{
+    const q = document.getElementById("searchBox").value.toLowerCase();
+    const rows = document.querySelectorAll("#tableBody tr");
+    let visible = 0;
+    rows.forEach(row => {{
+      const text = row.textContent.toLowerCase();
+      const isMatch = row.classList.contains("match-row");
+      const show = (!matchOnlyActive || isMatch) && (!q || text.includes(q));
+      row.style.display = show ? "" : "none";
+      if (show) visible++;
+    }});
+    document.getElementById("noResults").style.display = visible === 0 ? "block" : "none";
+  }}
+
+  function toggleMatchOnly() {{
+    matchOnlyActive = !matchOnlyActive;
+    document.getElementById("matchOnly").classList.toggle("active", matchOnlyActive);
+    filterTable();
+  }}
+</script>
+</body>
+</html>"""
+
+    with open(outfile, "w", encoding="utf-8") as f:
+        f.write(html)
+    success(f"HTML report written to {outfile}")
 
 
 # ---------------------------------------------------------------------------
