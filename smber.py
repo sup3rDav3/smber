@@ -56,7 +56,7 @@ SENSITIVE_EXTENSIONS = {
     # Scripts — may contain hardcoded creds
     ".ps1", ".bat", ".cmd", ".vbs", ".sh",
     # Office docs — only if filenames match sensitive list below
-    ".xlsx", ".xls", ".csv", ".docx", ".doc",
+    ".xlsx", ".xls", ".csv",
 }
 
 # High-signal extensions that are only flagged if filename also looks sensitive
