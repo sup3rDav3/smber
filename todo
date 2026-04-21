@@ -1,1 +1,2 @@
 Don't try to read/cat .docx - should we 'strings' them?
+Work on multi-threading.  Seems way slower than single at the moment.
