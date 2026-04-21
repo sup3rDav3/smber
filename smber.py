@@ -116,7 +116,7 @@ CONTENT_PATTERNS = [
 
 MAX_CAT_SIZE   = 512 * 1024   # only cat files <= 512 KB
 MAX_DEPTH      = 6            # max directory recursion depth
-SKIP_SHARES    = {"IPC$", "print$", "ADMIN$"}   # shares to skip by default
+SKIP_SHARES    = {"IPC$", "print$", "ADMIN$", "SYSVOL"}   # shares to skip by default
 # High-noise OS paths to skip when scanning C$ and ADMIN$
 SKIP_PATHS = {
     "windows\\system32",
