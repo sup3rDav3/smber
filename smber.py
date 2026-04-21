@@ -137,7 +137,8 @@ SKIP_PATHS = {
 }
 
 BINARY_EXTS    = {".exe", ".dll", ".bin", ".so", ".zip", ".gz", ".tar",
-                  ".7z", ".rar", ".jpg", ".png", ".gif", ".bmp", ".pdf"}
+                  ".7z", ".rar", ".jpg", ".png", ".gif", ".bmp", ".pdf",
+                  ".docx", ".doc", ".xlsx", ".xls"}  # Office: flag but never read
 
 # ---------------------------------------------------------------------------
 # Logging / output helpers
