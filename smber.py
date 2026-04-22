@@ -4,10 +4,10 @@ SMB Sensitive File Finder
 For use during authorized penetration tests only.
 
 Usage:
-    python3 smb_sensitive_finder.py -t 192.168.1.10 -u admin -p Password123
-    python3 smb_sensitive_finder.py -t 192.168.1.10 -u admin -p Password123 --hash <NTLM>
-    python3 smb_sensitive_finder.py -t 192.168.1.10 -u '' -p '' --null-session
-    python3 smb_sensitive_finder.py --targets targets.txt -u admin -p Password123
+    python3 smber.py -t 192.168.1.10 -u admin -p Password123
+    python3 smber.py -t 192.168.1.10 -u admin -p Password123 --hash <NTLM>
+    python3 smber.py -t 192.168.1.10 -u '' -p '' --null-session
+    python3 smber.py --targets targets.txt -u admin -p Password123
 
 Dependencies:
     pip install impacket colorama
