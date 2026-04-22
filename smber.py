@@ -4,10 +4,10 @@ SMB Sensitive File Finder
 For use during authorized penetration tests only.
 
 Usage:
-    python3 smber.py -t 192.168.1.10 -u admin -p Password123
-    python3 smber.py -t 192.168.1.10 -u admin -p Password123 --hash <NTLM>
-    python3 smber.py -t 192.168.1.10 -u '' -p '' --null-session
-    python3 smber.py --targets targets.txt -u admin -p Password123
+    python3 smb_sensitive_finder.py -t 192.168.1.10 -u admin -p Password123
+    python3 smb_sensitive_finder.py -t 192.168.1.10 -u admin -p Password123 --hash <NTLM>
+    python3 smb_sensitive_finder.py -t 192.168.1.10 -u '' -p '' --null-session
+    python3 smb_sensitive_finder.py --targets targets.txt -u admin -p Password123
 
 Dependencies:
     pip install impacket colorama
@@ -282,14 +282,17 @@ def _process_file(conn, share, remote_path, size, unc, findings, args):
 
     # --scan: list files only, skip all content reading
     if not args.scan:
-        import io
-        buf = io.BytesIO()
-        try:
-            conn.getFile(share, clean_path, buf.write)
-            raw = buf.getvalue()[:MAX_CAT_SIZE]
-        except Exception as e:
-            log.warning(f"read error {share}/{clean_path}: {e}")
-            raw = None
+        if size > MAX_CAT_SIZE:
+            warn(f"  Skipping content read — file too large ({size:,} bytes): {clean_path}")
+        else:
+            import io
+            buf = io.BytesIO()
+            try:
+                conn.getFile(share, clean_path, buf.write)
+                raw = buf.getvalue()[:MAX_CAT_SIZE]
+            except Exception as e:
+                log.warning(f"read error {share}/{clean_path}: {e}")
+                raw = None
 
         if raw:
             try:
