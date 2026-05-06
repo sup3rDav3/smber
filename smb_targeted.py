@@ -9,21 +9,6 @@ Usage:
     python3 smber.py -t 192.168.1.10 -u '' -p '' --null-session
     python3 smber.py --targets targets.txt -u admin -p Password123
 
-# Full UNC path
-python3 smber.py -t 192.168.1.252 -u testuser -p 'P@ssw0rdLabTest1!' -d ad.local --dump --path "\\\\192.168.1.252\\TestShare\\IT\\Files"
-
-# Share + subpath only (target IP still comes from -t)
-python3 smber.py -t 192.168.1.252 -u testuser -p 'P@ssw0rdLabTest1!' -d ad.local --dump --path "\\\\192.168.1.252\\TestShare\\IT"
-
-# Works with --scan too
-python3 smber.py -t 192.168.1.252 -u testuser -p 'P@ssw0rdLabTest1!' -d ad.local --scan --path "\\\\192.168.1.252\\TestShare\\IT"
-
-# Clean — no need to repeat the IP in --path
-python3 smber.py -t 192.168.1.252 -u testuser -p 'P@ssw0rdLabTest1!' -d ad.local --dump --path "\\TestShare\IT\Files"
-
-# Also works with full UNC — it just ignores the host part
-python3 smber.py -t 192.168.1.252 -u testuser -p 'P@ssw0rdLabTest1!' -d ad.local --dump --path "\\\\192.168.1.252\\TestShare\\IT\\Files"
-
 Dependencies:
     pip install impacket colorama
 """
@@ -358,18 +343,31 @@ def walk_share(conn: SMBConnection, share: str, path: str,
 
 
 def parse_unc_path(unc: str):
-    """Parse \\host\share\sub\path into (host, share, subpath)."""
-    # Normalise separators
-    unc = unc.replace("/", "\")
+    """Parse a UNC path into (host, share, subpath). Accepts:
+       \\\\host\\share\\sub  or  \\share\\sub  or  share\\sub
+    """
+    # Normalise forward slashes to backslashes
+    unc = unc.replace("/", "\\")
     # Strip leading backslashes
-    unc = unc.lstrip("\")
-    parts = unc.split("\")
-    if len(parts) < 2:
+    while unc.startswith("\\"):
+        unc = unc[1:]
+    parts = unc.split("\\")
+    parts = [p for p in parts if p]  # remove empty segments
+    if len(parts) == 0:
         return None, None, ""
-    host  = parts[0]
-    share = parts[1]
-    sub   = "\".join(parts[2:]) if len(parts) > 2 else ""
+    # If first segment looks like an IP or hostname, skip it
+    first = parts[0]
+    is_host = ("." in first or first.lower() == "localhost")
+    if is_host and len(parts) >= 2:
+        host  = parts[0]
+        share = parts[1]
+        sub   = "\\".join(parts[2:])
+    else:
+        host  = None
+        share = parts[0]
+        sub   = "\\".join(parts[1:])
     return host, share, sub
+
 
 
 def enumerate_host(args) -> list:
